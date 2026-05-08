@@ -1,7 +1,12 @@
 #include <CLI/CLI.hpp>
-#include <string>
+#include <spdlog/spdlog.h>
+#include "logger.hpp"
 
 int main(int argc, char** argv) {
+    // Initialize logger
+    auto logger = Logger::get();
+    logger->info("NetLearn application started");
+
     // Setup CLI
     CLI::App app{"NetLearn - Network Packet Analysis Tool"};
 
@@ -16,9 +21,19 @@ int main(int argc, char** argv) {
 
     CLI11_PARSE(app, argc, argv);
 
+    if (verbose) {
+        logger->set_level(spdlog::level::trace);
+        logger->info("Verbose mode enabled");
+    }
+
     if (interface.empty()) {
+        logger->warn("No interface specified, using default: eth0");
         interface = "eth0";
     }
+
+    logger->info("Interface: {}", interface);
+    logger->info("Packet count: {}", packet_count);
+    logger->info("Application finished successfully");
 
     return 0;
 }
