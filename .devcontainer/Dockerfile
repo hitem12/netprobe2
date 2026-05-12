@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim
+FROM gcc:16
 
 ARG UID=1000
 ARG USERNAME=dev
@@ -12,9 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     pkg-config \
-    # Compiler
-    gcc \
-    g++ \
     clang \
     clang-tidy \
     clang-format \
@@ -40,28 +37,18 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 ENV UV_TOOL_DIR=/opt/uv/tools
 ENV UV_TOOL_BIN_DIR=/usr/local/bin
-ENV UV_PYTHON_PREFERENCE=system
+ENV UV_PYTHON_PREFERENCE=only-system
 
-RUN uv python install
-RUN uv tool install conan
+RUN mkdir -p /opt/uv/tools \
+    && uv tool install conan
 
 # Create non-root user
 RUN useradd -m -u ${UID} -s /bin/bash ${USERNAME} \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# Give user access to raw sockets without sudo
-RUN setcap cap_net_raw,cap_net_admin+eip /usr/bin/tcpdump || true
 
 USER ${USERNAME}
-RUN conan --help
 
 WORKDIR /workspace
-
-# Set Conan to auto-install system packages
-RUN conan config set tools.system.package_manager:mode=install && \
-    conan config set tools.system.package_manager:sudo=True || true
-
-# Conan cache lives inside the mounted workspace so it survives rebuilds
-ENV CONAN_HOME=/workspace/.conan2
 
 CMD ["/bin/bash"]
