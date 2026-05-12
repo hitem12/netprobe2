@@ -22,3 +22,8 @@ result.json
 *~
 .DS_Store
 CMakeUserPresets.json
+to_delete
+.conan2
+.vscode
+.vsconan
+.idea
