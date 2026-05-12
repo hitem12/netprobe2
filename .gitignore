@@ -21,3 +21,4 @@ result.json
 *.swo
 *~
 .DS_Store
+CMakeUserPresets.json
