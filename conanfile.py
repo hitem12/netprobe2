@@ -32,7 +32,7 @@ class NetlearnConan(ConanFile):
     )
     
     # Build/Test dependencies
-    build_requires = (
+    test_requires = (
         "gtest/1.17.0",
         "benchmark/1.8.4",
     )
@@ -53,7 +53,9 @@ class NetlearnConan(ConanFile):
     def layout(self):
         """Define folder layout"""
         cmake_layout(self)
-    
+        bt = str(self.settings.build_type).lower()
+        self.folders.build      = f"cmake-build-{bt}"
+        self.folders.generators = f"cmake-build-{bt}"
     def generate(self):
         """Generate build files"""
         tc = CMakeToolchain(self)
