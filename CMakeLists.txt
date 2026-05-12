@@ -21,7 +21,7 @@ find_package(spdlog REQUIRED)
 # Add main application
 add_executable(netlearn
     src/main.cpp
-
+        src/pcap_struct.hpp
 )
 target_link_libraries(netlearn
     PRIVATE
