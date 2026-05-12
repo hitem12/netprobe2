@@ -13,7 +13,7 @@
 
   // Mount Conan cache inside the project so it persists across container rebuilds
   "mounts": [
-    "source=${localEnv:HOME}/.conan2,target=/root/.conan2,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.conan2,target=/home/dev/.conan2,type=bind,consistency=cached"
   ],
   "remoteEnv": {
     "SSH_AUTH_SOCK": "/ssh-agent"
@@ -39,6 +39,9 @@
     // CLion: toolchain is picked up automatically via Docker toolchain settings.
     // Point CLion at this devcontainer image or use the Docker toolchain directly.
     "jetbrains": {
+      "settings": {
+        "com.intellij:app:HttpConfigurable.use_proxy_pac": true
+      },
       "clion": {
         "plugins": [
           "conan"
