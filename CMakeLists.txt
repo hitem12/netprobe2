@@ -25,6 +25,8 @@ add_executable(netlearn
         src/pcap_struct.hpp
         src/control_massage_header.cpp
         src/control_massage_header.h
+        src/ipv4_parser.cpp
+        src/ipv4_parser.h
 )
 target_link_libraries(netlearn
     PRIVATE
