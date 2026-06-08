@@ -45,7 +45,6 @@ public:
                     std::chrono::locate_zone("Europe/Warsaw") ,ts_ns},
                     ns.count());
             }
-            std::println("agawa");
         }
     }
 };

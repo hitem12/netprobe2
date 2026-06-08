@@ -10,13 +10,15 @@
 #include <linux/ip.h>
 #include <arpa/inet.h>
 #include <print>
+#include <string>
+#include <format>
 namespace frame
 {
 
 class ipv4_parser
 {
 public:
-    static void log_frame(const struct iphdr * hdr)
+    static std::string log_frame(const struct iphdr * hdr)
     {
         char src_str[INET_ADDRSTRLEN];
         char dst_str[INET_ADDRSTRLEN];
@@ -24,10 +26,10 @@ public:
         inet_ntop(AF_INET, &hdr->saddr, src_str, sizeof(src_str));
         inet_ntop(AF_INET, &hdr->daddr, dst_str, sizeof(dst_str));
 
-        std::print("ihl: {}, version: {}, srd: {}, dst: {}, protocol: {}", hdr->ihl, hdr->version,
+        return std::format("ihl: {}, version: {}, srd: {}, dst: {}, protocol: {}", hdr->ihl, hdr->version,
             src_str, dst_str, get_protocol_name(hdr->protocol));
 
-        std::println();
+
     }
 private:
     static constexpr std::string_view get_protocol_name(const uint8_t &protocol)
