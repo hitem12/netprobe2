@@ -31,6 +31,8 @@ add_executable(netlearn
         src/Forge.h
         src/SocketCtl.cpp
         src/SocketCtl.h
+        src/Parsers.cpp
+        src/Parsers.h
 )
 target_link_libraries(netlearn 
     PRIVATE
