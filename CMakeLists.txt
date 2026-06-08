@@ -21,12 +21,16 @@ find_package(spdlog REQUIRED)
 # Add main application
 add_executable(netlearn
     src/main.cpp
-        src/dummy_af.hpp
+        src/Sniffer.hpp
         src/pcap_struct.hpp
         src/ipv4_parser.cpp
         src/ipv4_parser.h
         src/control_massage_header.cpp
         src/control_massage_header.h
+        src/Forge.cpp
+        src/Forge.h
+        src/SocketCtl.cpp
+        src/SocketCtl.h
 )
 target_link_libraries(netlearn 
     PRIVATE
