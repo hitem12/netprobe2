@@ -29,6 +29,8 @@ add_executable(netlearn
         src/control_massage_header.h
         src/SocketCtl.cpp
         src/SocketCtl.h
+        src/Forge.cpp
+        src/Forge.h
 )
 target_link_libraries(netlearn
     PRIVATE
