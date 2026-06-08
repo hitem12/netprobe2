@@ -27,12 +27,12 @@ add_executable(netlearn
         src/ipv4_parser.h
         src/control_massage_header.cpp
         src/control_massage_header.h
-        src/SocketCtl.cpp
-        src/SocketCtl.h
         src/Forge.cpp
         src/Forge.h
+        src/SocketCtl.cpp
+        src/SocketCtl.h
 )
-target_link_libraries(netlearn
+target_link_libraries(netlearn 
     PRIVATE
     CLI11::CLI11
     libpcap::libpcap
@@ -46,7 +46,6 @@ if(BUILD_TESTING)
     add_executable(netlearn_tests
         tests/test_logger.cpp
         tests/test_utils.cpp
-
     )
     target_link_libraries(netlearn_tests
         PRIVATE

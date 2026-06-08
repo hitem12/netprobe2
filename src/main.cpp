@@ -1,7 +1,9 @@
-#include <CLI/CLI.hpp>
 #include <spdlog/spdlog.h>
+#include <CLI/CLI.hpp>
+#include "Sniffer.hpp"
+#include "SocketCtl.h"
 #include "logger.hpp"
-#include "dummy_af.hpp"
+
 int main(int argc, char** argv) {
     // Initialize logger
     auto logger = Logger::get();
@@ -10,18 +12,42 @@ int main(int argc, char** argv) {
 
     // Setup CLI
     CLI::App app{"NetLearn - Network Packet Analysis Tool"};
+    app.require_subcommand(1);
+
+    auto sniffer_app = app.add_subcommand("sniff", "Capture packet tool");
+    auto forge_app = app.add_subcommand("forge", "Create packet and send tool");
+
+    sniffer_app->fallthrough();
+    forge_app->fallthrough();
 
     std::string interface;
     app.add_option("-i,--interface", interface, "Network interface to capture on");
+
 
     int packet_count = 1;
     app.add_option("-c,--count", packet_count, "Number of packets to capture");
 
     bool verbose = false;
     app.add_flag("-v,--verbose", verbose, "Enable verbose output");
-    bool z = false;
-    app.add_option("-z",z,  "zupa");
+    sniffer_app->callback([&](){
+        if (interface.empty()) {
+            interface = "wlan0";
+        }
+        const auto socket_ctl = std::make_unique<SocketCtl>();
+        auto status = socket_ctl->open_socket(interface);
+        if (!status)
+        {
+            logger->error("Failed to initialize: {}", status.error().message());
 
+        }
+        auto snif = Sniffer();
+        status = snif.sniff(*socket_ctl, packet_count);
+        if (!status)
+        {
+            logger->error("Sniff fail: {}", status.error().message());
+        }
+        socket_ctl->close_socket();
+    });
     CLI11_PARSE(app, argc, argv);
 
     if (verbose) {
@@ -33,11 +59,7 @@ int main(int argc, char** argv) {
         interface = "wlan0";
     }
     logger->info("Interface: {}", interface);
-    auto status = dummy_af::ala(interface, packet_count);
-    if (!status)
-    {
-        logger->error("Failed to initialize: {}", status.error().message());
-    }
+
 
     logger->info("Packet count: {}", packet_count);
 
