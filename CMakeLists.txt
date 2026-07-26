@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(netlearn CXX)
 include(CTest)
 # Set C++ standard to C++23
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_C_STANDARD  17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -34,6 +34,8 @@ add_executable(netlearn
         src/Parsers.cpp
         src/Parsers.h
         src/endians.h
+        src/PacketBuffer.cpp
+        src/PacketBuffer.h
 )
 target_link_libraries(netlearn 
     PRIVATE
@@ -50,6 +52,9 @@ if(BUILD_TESTING)
         tests/test_logger.cpp
         tests/test_utils.cpp
             tests/test_endians.cpp
+            tests/test_PacketBuffer.cpp
+            src/PacketBuffer.cpp
+
     )
     target_link_libraries(netlearn_tests
         PRIVATE

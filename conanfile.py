@@ -63,7 +63,7 @@ class NetlearnConan(ConanFile):
         tc = CMakeToolchain(self)
         
         # C++23 configuration
-        tc.variables["CMAKE_CXX_STANDARD"] = "23"
+        tc.variables["CMAKE_CXX_STANDARD"] = "26"
         tc.variables["CMAKE_CXX_STANDARD_REQUIRED"] = "ON"
         tc.variables["CMAKE_CXX_EXTENSIONS"] = "OFF"
         
