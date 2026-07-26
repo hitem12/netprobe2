@@ -36,11 +36,11 @@ struct EPB {
 class Sniffer
 {
    public:
-    static std::expected<bool, std::error_code> sniff(const SocketCtl &socket_ctl, const size_t packet_count)
+    static std::expected<void, std::error_code> sniff(const SocketCtl &socket_ctl, const size_t packet_count)
     {
         const auto log = Logger::get();
-        const int* fd = socket_ctl.get();
-        if (fd == nullptr || *fd==0)
+        const int fd = socket_ctl.get();
+        if (fd==0)
         {
             return std::unexpected{std::error_code{ std::make_error_code(std::errc::bad_address)}};
         }
@@ -66,7 +66,7 @@ class Sniffer
             msgvec[i].msg_hdr.msg_controllen = sizeof(cmsg_bufs[i]);
         }
 
-        int received = recvmmsg(*fd, msgvec, packet_count, 0, NULL);
+        int received = recvmmsg(fd, msgvec, packet_count, 0, NULL);
             if (received < 0) { return std::unexpected{std::error_code{errno, std::generic_category()}};}
         log->debug("received {}", received);
         for (int i = 0; i < received; ++i)
@@ -118,12 +118,12 @@ class Sniffer
                     switch(op)
                     {
                         case ARPOP_REQUEST: {
-                            log->info("ARP request: who has {} tell {}\n sender MAC: {}", tpa, spa, print_mac(arp->arp_sha) );
+                            log->info("ARP request: who has {} tell {}\n sender MAC: {}", tpa, spa, parse_mac(arp->arp_sha) );
                             break;
                         }
                         case ARPOP_REPLY:
                         {
-                            log->info("ARP reply: {} is at {}", spa, print_mac(arp->arp_sha));
+                            log->info("ARP reply: {} is at {}", spa, parse_mac(arp->arp_sha));
                             break;
                         }
                         default:
@@ -137,7 +137,7 @@ class Sniffer
                     log->info("Unknown ethernet type: {}", ethertype);
             }
         }
-        return true;
+        return {};
     }
 };
 

@@ -3,7 +3,7 @@
 //
 
 #include "Parsers.h"
-std::string parsers::print_mac(const std::span<const uint8_t> mac)
+std::string parsers::parse_mac(const std::span<const uint8_t> mac)
 {
     return std::format("{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", mac[0], mac[1], mac[2], mac[3],
                        mac[4], mac[5]);
@@ -20,7 +20,7 @@ std::string_view parsers::DEI_to_string(uint8_t dei)
             return "unknown";
     }
 }
-std::string parsers::parse_mac(const unsigned char* mac)
+std::string parsers::parse_mac(unsigned char* mac)
 {
     return std::format("{:02X}:{:02x}:{:02x}:{:02X}:{:02X}:{:02X}", mac[0], mac[1], mac[2], mac[3],
                        mac[4], mac[5]);
