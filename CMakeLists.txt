@@ -33,6 +33,7 @@ add_executable(netlearn
         src/SocketCtl.h
         src/Parsers.cpp
         src/Parsers.h
+        src/endians.h
 )
 target_link_libraries(netlearn 
     PRIVATE
@@ -48,6 +49,7 @@ if(BUILD_TESTING)
     add_executable(netlearn_tests
         tests/test_logger.cpp
         tests/test_utils.cpp
+            tests/test_endians.cpp
     )
     target_link_libraries(netlearn_tests
         PRIVATE

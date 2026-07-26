@@ -15,9 +15,9 @@ struct vlan_hdr {
 };
 namespace parsers
 {
-std::string print_mac(std::span<const uint8_t> mac);
+std::string parse_mac(std::span<const uint8_t> mac);
 std::string_view DEI_to_string(uint8_t dei);
-std::string parse_mac(const unsigned char* mac);
+std::string parse_mac(unsigned char* mac);
 std::string_view PCP_to_string(uint8_t pcp);
 std::string parse_vlan(const struct vlan_hdr* vlan);
 }  // namespace parsers

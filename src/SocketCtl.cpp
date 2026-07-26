@@ -3,24 +3,22 @@
 //
 
 #include "SocketCtl.h"
-std::expected<bool, std::error_code> SocketCtl::open_socket(const std::string_view interface)
+std::expected<void, std::error_code> SocketCtl::open_socket(const std::string_view interface)
 {
     fd_ = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (!fd_)
     {
         return std::unexpected{std::error_code{errno, std::generic_category()}};
     }
-
-    strncpy(ifr.ifr_name, interface.data(), IFNAMSIZ - 1);
-    ioctl(fd_, SIOCGIFINDEX, &ifr);
+    if (auto status = get_interface_info(interface); !status) return status;
 
     // ── promiscuous mode ───────────────────────────────────
     struct packet_mreq mr{};
-    mr.mr_ifindex = ifr.ifr_ifindex;
+    mr.mr_ifindex = info.ifindex;
     mr.mr_type = PACKET_MR_PROMISC;
     if (setsockopt(fd_, SOL_PACKET, PACKET_ADD_MEMBERSHIP, &mr, sizeof(mr)) < 0)
     {
-        perror("PACKET_ADD_MEMBERSHIP");
+        return std::unexpected{std::error_code{errno, std::generic_category()}};
     }
 
     // ── receive buffer ─────────────────────────────────────
@@ -37,18 +35,18 @@ std::expected<bool, std::error_code> SocketCtl::open_socket(const std::string_vi
     struct sockaddr_ll addr{};
     addr.sll_family = AF_PACKET;
     addr.sll_protocol = htons(ETH_P_ALL);
-    addr.sll_ifindex = ifr.ifr_ifindex;
+    addr.sll_ifindex = info.ifindex;
 
     if (bind(fd_, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)))
     {
         return std::unexpected{std::error_code{errno, std::generic_category()}};
     }
-    return true;
+    return {};
 }
 void SocketCtl::close_socket()
 {
     const struct packet_mreq mr_end = {
-        .mr_ifindex = ifr.ifr_ifindex,
+        .mr_ifindex = info.ifindex,
         .mr_type = PACKET_MR_PROMISC,
     };
     setsockopt(fd_, SOL_PACKET, PACKET_DROP_MEMBERSHIP, &mr_end, sizeof(mr_end));

@@ -54,6 +54,8 @@ class NetlearnConan(ConanFile):
         """Define folder layout"""
         cmake_layout(self)
         bt = str(self.settings.build_type).lower()
+        platform = self.conf.get("user.netprobe:platform", default="host")
+        suffix = "" if platform == "host" else f"-{platform}"
         self.folders.build      = f"cmake-build-{bt}"
         self.folders.generators = f"cmake-build-{bt}"
     def generate(self):

@@ -1,6 +1,7 @@
 #include <spdlog/spdlog.h>
 #include <CLI/CLI.hpp>
 #include "Sniffer.hpp"
+#include  "Forge.h"
 #include "SocketCtl.h"
 #include "logger.hpp"
 
@@ -48,7 +49,26 @@ int main(int argc, char** argv) {
         }
         socket_ctl->close_socket();
     });
+    forge_app->callback([&]()
+    {
+        if (interface.empty()) {
+           interface = "wlan0";
+       }
+       const auto socket_ctl = std::make_unique<SocketCtl>();
+       auto status = socket_ctl->open_socket(interface);
+       if (!status) [[unlikely]]
+       {
+           logger->error("Failed to initialize: {}", status.error().message());
+            return;
+       }
+        status = Forge::forge(*socket_ctl);
+        if (!status) [[unlikely]]
+        {
+            logger->error("Failed to forge: {}", status.error().message());
+        }
+    });
     CLI11_PARSE(app, argc, argv);
+    logger->info("Interface: {}", interface);
 
     if (verbose) {
         logger->set_level(spdlog::level::trace);
@@ -58,10 +78,9 @@ int main(int argc, char** argv) {
     if (interface.empty()) {
         interface = "wlan0";
     }
-    logger->info("Interface: {}", interface);
 
 
-    logger->info("Packet count: {}", packet_count);
+
 
     return 0;
 }
