@@ -23,15 +23,16 @@ inline auto format_as(EthernetType c) {
 struct TCI
 {
     uint16_t VID :12;
-    uint16_t PCP : 3;
     uint16_t DEI : 1;
+    uint16_t PCP : 3;
 };
 #pragma pack(pop)
 
 struct VLAN_TAG
 {
-    const uint16_t TPID = 0x8100;
     TCI tci;
+    const uint16_t TPID = 0x8100;
+
 };
 
 struct EthernetHeader
@@ -47,9 +48,9 @@ struct EthernetHeader
         buf.mac(src_mac);
         if (vlan_tag.has_value())
         {
-            buf.be16(std::bit_cast<uint32_t>(vlan_tag.value()));
-
+            buf.be32(std::bit_cast<uint32_t>(vlan_tag.value()));
         }
+        buf.be16(static_cast<uint16_t>(type));
 
     }
 };
