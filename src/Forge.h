@@ -12,7 +12,7 @@
 #include <netinet/if_ether.h>
 
 
-
+namespace net {
 class Forge
 {
 public:
@@ -29,5 +29,5 @@ public:
 
 
 };
-
+}
 #endif  // NETLEARN_FORGE_H

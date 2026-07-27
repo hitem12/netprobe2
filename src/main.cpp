@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
            logger->error("Failed to initialize: {}", status.error().message());
             return;
        }
-        status = Forge::forge(*socket_ctl);
+        status = net::Forge::forge(*socket_ctl);
         if (!status) [[unlikely]]
         {
             logger->error("Failed to forge: {}", status.error().message());

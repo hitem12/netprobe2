@@ -36,8 +36,9 @@ add_executable(netlearn
         src/endians.h
         src/PacketBuffer.cpp
         src/PacketBuffer.h
+        src/EthernetHeader.h
 )
-target_link_libraries(netlearn
+target_link_libraries(netlearn 
     PRIVATE
     CLI11::CLI11
     libpcap::libpcap
@@ -55,7 +56,10 @@ if(BUILD_TESTING)
             tests/test_PacketBuffer.cpp
             src/PacketBuffer.cpp
             src/Parsers.cpp
+            tests/test_EthernetHeader.cpp
             tests/test_Parsers.cpp
+
+
     )
     target_link_libraries(netlearn_tests
         PRIVATE
