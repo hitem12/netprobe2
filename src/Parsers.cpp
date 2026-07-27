@@ -57,3 +57,36 @@ std::string parsers::parse_vlan(const struct vlan_hdr* vlan)
     const uint16_t vid = (tci) & 0x0FFF;     // bity 11-0
     return std::format("PCP:{}, dei: {}, vid: {}", PCP_to_string(pcp), DEI_to_string(dei), vid);
 }
+std::optional<std::array<uint8_t, 6>> parsers::serialize_mac(
+    const std::string_view mac)
+{
+    std::array<uint8_t, 6> mac_bytes;
+    auto mac_bytes_it = mac_bytes.begin();
+    uint8_t group {0};
+    uint8_t nip {0};
+    for (const auto& c : mac)
+    {
+        if (c == ':')
+        {
+            if (nip != 2) return std::nullopt;
+            *mac_bytes_it = group;
+            mac_bytes_it++;
+            group = 0; nip =0;
+            if (mac_bytes_it == mac_bytes.end()) return std::nullopt;
+            continue;
+        }
+        uint8_t d;
+        if (c >= '0' && c <= '9') d = c - '0';
+        else if (c >= 'a' && c <= 'f') d = c - 'a' + 10;
+        else if (c >= 'A' && c <= 'F') d = c - 'A' + 10;
+        else return std::nullopt;
+        if (nip > 1) return std::nullopt;
+        group += d << 4*(1 - nip);
+        nip++;
+    }
+    if (nip != 2) return std::nullopt;
+    *mac_bytes_it = group;
+    mac_bytes_it++;
+    if (mac_bytes_it != mac_bytes.end()) return std::nullopt;
+    return mac_bytes;
+}
