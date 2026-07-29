@@ -37,6 +37,9 @@ add_executable(netlearn
         src/PacketBuffer.cpp
         src/PacketBuffer.h
         src/EthernetHeader.h
+        src/IPv4Header.cpp
+        src/IPv4Header.h
+        tests/helpers/AsHex.h
 )
 target_link_libraries(netlearn 
     PRIVATE
@@ -58,6 +61,7 @@ if(BUILD_TESTING)
             src/Parsers.cpp
             tests/test_EthernetHeader.cpp
             tests/test_Parsers.cpp
+            tests/test_IPv4Header.cpp
 
 
     )
