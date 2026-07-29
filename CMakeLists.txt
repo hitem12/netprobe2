@@ -37,9 +37,11 @@ add_executable(netlearn
         src/PacketBuffer.cpp
         src/PacketBuffer.h
         src/EthernetHeader.h
+        src/IPv4Header.cpp
+        src/IPv4Header.h
         tests/helpers/AsHex.h
 )
-target_link_libraries(netlearn
+target_link_libraries(netlearn 
     PRIVATE
     CLI11::CLI11
     libpcap::libpcap
@@ -57,8 +59,11 @@ if(BUILD_TESTING)
             tests/test_PacketBuffer.cpp
             src/PacketBuffer.cpp
             src/Parsers.cpp
-            tests/test_Parsers.cpp
             tests/test_EthernetHeader.cpp
+            tests/test_Parsers.cpp
+            tests/test_IPv4Header.cpp
+
+
     )
     target_link_libraries(netlearn_tests
         PRIVATE
