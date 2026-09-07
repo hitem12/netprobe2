@@ -8,13 +8,13 @@
 #include <optional>
 #include <fmt/format.h>
 #include "Parsers.h"
+
 namespace net
 {
 enum class EthernetType: uint16_t
 {
     IPv4 = 0x0800,
     ARP = 0x0806,
-    VLAN = 0x8100,
 };
 inline auto format_as(EthernetType c) {
     return static_cast<std::underlying_type_t<EthernetType>>(c);

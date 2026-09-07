@@ -21,7 +21,7 @@ struct flagsFragment
 
 struct IPv4Header
 {
-    const uint8_t version : 4 = 4;
+    uint8_t version : 4 = 4;
     uint8_t hlen : 4 ; //value between 5 - 15
     uint8_t typeOfService : 8;
     uint16_t totalLength : 16;
