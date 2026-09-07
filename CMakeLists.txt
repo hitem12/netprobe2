@@ -42,6 +42,7 @@ add_executable(netlearn
         src/IPv4Header.h
         src/Epoll.cpp
         src/Epoll.h
+        src/Ipv4.h
 )
 target_link_libraries(netlearn
     PRIVATE
