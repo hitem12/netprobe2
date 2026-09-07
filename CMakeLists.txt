@@ -43,6 +43,8 @@ add_executable(netlearn
         src/Epoll.cpp
         src/Epoll.h
         src/Ipv4.h
+        src/ArpHeader.cpp
+        src/ArpHeader.h
 )
 target_link_libraries(netlearn
     PRIVATE
@@ -65,6 +67,8 @@ if(BUILD_TESTING)
             tests/test_Parsers.cpp
             tests/test_EthernetHeader.cpp
             tests/test_IPv4Header.cpp
+            src/IPv4Header.cpp
+            tests/test_ArpHeader.cpp
     )
     target_link_libraries(netlearn_tests
         PRIVATE
