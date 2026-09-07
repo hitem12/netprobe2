@@ -9,6 +9,7 @@
 #include "endians.h"
 #include <span>
 #include <vector>
+#include <format>
 namespace net
 {
 
@@ -27,6 +28,15 @@ public:
     const uint8_t* data() const noexcept { return buffer_.data(); }
     size_t size() const noexcept { return buffer_.size(); }
     std::span<const uint8_t> view() const noexcept { return buffer_; }
+    std::string to_string() const
+    {
+        std::string result;
+        for (const auto& v : buffer_)
+        {
+            result += std::format("{:#04x} ", v);
+        }
+        return result;
+    }
     void clear() noexcept { buffer_.clear(); }
 };
 
