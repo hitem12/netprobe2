@@ -12,10 +12,11 @@
 #include <chrono>
 #include <netinet/if_ether.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
 #include "control_massage_header.h"
-#include <print>
 #include "SocketCtl.h"
 #include "Parsers.h"
+#include "Epoll.h"
 
 using namespace parsers;
 
@@ -35,14 +36,77 @@ struct EPB {
 
 class Sniffer
 {
+    static auto reserveBuffer()
+    {
+        struct sockaddr_in name_buf;
+        uint8_t      bufs[2048];
+        char         cmsg_bufs[256];
+        struct iovec iovecs;
+        struct msghdr msg;
+        iovecs.iov_base = bufs;
+        iovecs.iov_len  = sizeof(bufs);
+
+        memset(&msg, 0, sizeof(msg));
+        msg.msg_name = &name_buf; // sockaddr_in
+        msg.msg_namelen = sizeof(name_buf);
+        msg.msg_iov        = &iovecs; //buffer_array (raw frame)
+        msg.msg_iovlen     = 1; //number of iov entries
+        msg.msg_control    = cmsg_bufs; //cmsghdr (timstamp, TTL)
+        msg.msg_controllen = sizeof(cmsg_bufs);
+        return msg;
+    }
    public:
-    static std::expected<void, std::error_code> sniff(const SocketCtl &socket_ctl, const size_t packet_count)
+    static  std::error_code poll(const SocketCtl &socket_ctl,const uint32_t max_events =16)
+    {
+        auto epoll_ex = net::Epoll::create();
+        if (!epoll_ex.has_value())
+        {
+            return epoll_ex.error();
+        }
+        net::Epoll epoll = std::move(epoll_ex.value());
+        epoll.add(socket_ctl.get(), max_events);
+        for (;;)
+        {
+            epoll_event events[max_events];
+            const auto nfds = epoll.wait(events, 16, -1);
+            if (nfds == -1)
+            {
+                return std::error_code{errno, std::generic_category()};
+            }
+            for (size_t n = 0; n < nfds; ++n)
+            {
+                if (events[n].data.fd != socket_ctl.get())
+                {
+                    // do_use_fd(events[n].data.fd);
+                    continue;
+                }
+                auto buff = reserveBuffer();
+                const ssize_t r = ::recvmsg(socket_ctl.get(), &buff,  0);
+                if (r == -1)
+                {
+                    if (EAGAIN == errno || EWOULDBLOCK == errno) break;
+                    switch (errno)
+                    {
+                        case EINTR:
+                            continue;
+                        case ENETDOWN:
+                        case ENODEV:
+                        case ENXIO:
+                            return std::error_code{errno, std::generic_category()};
+                        default:
+                            return std::error_code(errno, std::system_category());
+                    }
+                }
+            }
+        }
+    }
+    static std::error_code sniff(const SocketCtl &socket_ctl, const size_t packet_count)
     {
         const auto log = Logger::get();
         const int fd = socket_ctl.get();
         if (fd==0)
         {
-            return std::unexpected{std::error_code{ std::make_error_code(std::errc::bad_address)}};
+            return std::error_code{ std::make_error_code(std::errc::bad_address)};
         }
 #define BATCH_SIZE 32
         // pre-allocate everything — no malloc in the hot path
@@ -67,7 +131,7 @@ class Sniffer
         }
 
         int received = recvmmsg(fd, msgvec, packet_count, 0, NULL);
-            if (received < 0) { return std::unexpected{std::error_code{errno, std::generic_category()}};}
+            if (received < 0) { return std::error_code{errno, std::generic_category()};}
         log->debug("received {}", received);
         for (int i = 0; i < received; ++i)
         {
@@ -139,6 +203,8 @@ class Sniffer
         }
         return {};
     }
+private:
+
 };
 
 
