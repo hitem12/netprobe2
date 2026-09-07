@@ -2,7 +2,6 @@
 // Created by tomaszp on 29.07.2026.
 //
 
-#pragma once
 #include "IPv4Header.h"
 void net::IPv4Header::serialize(PacketBuffer& buf)
 {

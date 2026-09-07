@@ -10,6 +10,7 @@ using ::testing::ElementsAreArray;
 IPv4Header baseHeader()
 {
     IPv4Header ip4h;
+    ip4h.version = 0x04;
     ip4h.hlen = 0x5;
     ip4h.typeOfService = 0x00;
     ip4h.totalLength = 0x003c;

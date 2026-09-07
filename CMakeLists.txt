@@ -45,6 +45,8 @@ add_executable(netlearn
         src/Ipv4.h
         src/ArpHeader.cpp
         src/ArpHeader.h
+        src/IPv4HeaderBuilder.cpp
+        src/IPv4HeaderBuilder.h
 )
 target_link_libraries(netlearn
     PRIVATE
