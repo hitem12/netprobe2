@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <inplace_vector>
 #include "PacketBuffer.h"
+#include "PacketReader.h"
 namespace net
 {
 #pragma pack(push, 1)
@@ -35,6 +36,7 @@ struct IPv4Header
     std::inplace_vector<uint8_t,40> options; //optional have t o be aligned to 4 bits
 
     void serialize(PacketBuffer& buf);
+    std::error_code deserialize(PacketReader& buf);
 };
 #pragma pack(pop)
 
