@@ -80,7 +80,7 @@ std::error_code net::IPv4Header::deserialize(PacketReader& buf)
     }
     else return std::make_error_code(std::errc::invalid_argument);
 
-    if (const auto o = buf.bytes(40);o.has_value())
+    if (const auto o = buf.bytes(hlen*4 - 20);o.has_value())
     {
         options.assign(o.value().begin(), o.value().end());
     }
