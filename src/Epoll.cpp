@@ -3,14 +3,23 @@
 //
 
 #include "Epoll.h"
-std::error_code net::Epoll::add(const int fd, const uint32_t events)
+std::expected<net::Epoll, std::error_code> net::Epoll::create() noexcept
+{
+    int fd = ::epoll_create1(EPOLL_CLOEXEC);
+    if (fd == -1)
+    {
+        return std::unexpected(std::error_code(errno, std::system_category()));
+    }
+    return Epoll{fd};
+}
+std::error_code net::Epoll::add(const int fd)
 {
     epoll_event ev{};
-    ev.events = events;
+    ev.events = EPOLLIN;
     ev.data.fd = fd;
     if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &ev) < 0)
     {
-        return std::error_code(errno, std::system_category());
+        return {errno, std::system_category()};
     }
     return {};
 }

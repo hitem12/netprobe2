@@ -47,6 +47,10 @@ add_executable(netlearn
         src/Ipv4.h
         src/Epoll.cpp
         src/Epoll.h
+        src/RecvBuffer.cpp
+        src/RecvBuffer.h
+        src/PacketReader.cpp
+        src/PacketReader.h
 )
 target_link_libraries(netlearn 
     PRIVATE

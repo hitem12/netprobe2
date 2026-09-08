@@ -17,7 +17,7 @@
 #include "SocketCtl.h"
 #include "Parsers.h"
 #include "Epoll.h"
-
+#include "RecvBuffer.h"
 using namespace parsers;
 
 using steady_clock = std::chrono::steady_clock;
@@ -36,35 +36,23 @@ struct EPB {
 
 class Sniffer
 {
-    static auto reserveBuffer()
-    {
-        struct sockaddr_in name_buf;
-        uint8_t      bufs[2048];
-        char         cmsg_bufs[256];
-        struct iovec iovecs;
-        struct msghdr msg;
-        iovecs.iov_base = bufs;
-        iovecs.iov_len  = sizeof(bufs);
 
-        memset(&msg, 0, sizeof(msg));
-        msg.msg_name = &name_buf; // sockaddr_in
-        msg.msg_namelen = sizeof(name_buf);
-        msg.msg_iov        = &iovecs; //buffer_array (raw frame)
-        msg.msg_iovlen     = 1; //number of iov entries
-        msg.msg_control    = cmsg_bufs; //cmsghdr (timstamp, TTL)
-        msg.msg_controllen = sizeof(cmsg_bufs);
-        return msg;
-    }
    public:
     static  std::error_code poll(const SocketCtl &socket_ctl,const uint32_t max_events =16)
     {
+        const auto log = Logger::get();
         auto epoll_ex = net::Epoll::create();
         if (!epoll_ex.has_value())
         {
             return epoll_ex.error();
         }
         net::Epoll epoll = std::move(epoll_ex.value());
-        epoll.add(socket_ctl.get(), max_events);
+        if (const auto status = epoll.add(socket_ctl.get());status)
+        {
+            return status;
+        }
+        log->debug("epoll created for {}", socket_ctl.get());
+        net::RecvBuffer<1> recv_buffer;
         for (;;)
         {
             epoll_event events[max_events];
@@ -73,6 +61,7 @@ class Sniffer
             {
                 return std::error_code{errno, std::generic_category()};
             }
+            log->debug("receive poll size {}", nfds);
             for (size_t n = 0; n < nfds; ++n)
             {
                 if (events[n].data.fd != socket_ctl.get())
@@ -80,9 +69,8 @@ class Sniffer
                     // do_use_fd(events[n].data.fd);
                     continue;
                 }
-                auto buff = reserveBuffer();
-                const ssize_t r = ::recvmsg(socket_ctl.get(), &buff,  0);
-                if (r == -1)
+                recv_buffer.reset();
+                if (const ssize_t r = ::recvmsg(socket_ctl.get(), recv_buffer.get_msghdr(), 0); r == -1)
                 {
                     if (EAGAIN == errno || EWOULDBLOCK == errno) break;
                     switch (errno)
@@ -97,7 +85,84 @@ class Sniffer
                             return std::error_code(errno, std::system_category());
                     }
                 }
+                parse_frame(recv_buffer.get_msghdr());
             }
+        }
+    }
+    static void parse_frame(struct msghdr* msghdr)
+    {
+        const auto log = Logger::get();
+        // metadata
+        frame::control_massage_header::parse(msghdr);
+        // header
+        auto* bufs = msghdr->msg_iov->iov_base;
+        const struct ethhdr* eth = static_cast<struct ethhdr*>(bufs);
+        log->info("Header: \ndst: {}, src: {}", parse_mac(eth->h_source), parse_mac(eth->h_source));
+
+        switch (uint16_t ethertype = ntohs(eth->h_proto))
+        {
+            case ETH_P_8021Q:
+            {
+                const struct vlan_hdr* vlan =
+                    static_cast<struct vlan_hdr*>(bufs + sizeof(struct ethhdr));
+                log->info(parse_vlan(vlan));
+                break;
+            }
+            case ETH_P_IP:
+            {
+                const struct iphdr* ip4_hdr =
+                    reinterpret_cast<struct iphdr*>(bufs + sizeof(struct ethhdr));
+                log->info(frame::ipv4_parser::log_frame(ip4_hdr));
+                break;
+            }
+            case (ETH_P_IPV6):
+            {
+                const struct ipv6hdr* ip6_hdr =
+                    reinterpret_cast<struct ipv6hdr*>(bufs + sizeof(struct ethhdr));
+                char src_str[INET_ADDRSTRLEN];
+                char dst_str[INET_ADDRSTRLEN];
+
+                inet_ntop(AF_INET, &ip6_hdr->saddr, src_str, sizeof(src_str));
+                inet_ntop(AF_INET, &ip6_hdr->daddr, dst_str, sizeof(dst_str));
+                log->info("ipv6 src: {}, dst: {}", src_str, dst_str);
+                break;
+            }
+            case ETH_P_ARP:
+            {
+                const static ether_arp* arp =
+                    reinterpret_cast<ether_arp*>(bufs + sizeof(struct ethhdr));
+                uint16_t op = ntohs(arp->ea_hdr.ar_op);
+
+                // sender
+                char spa[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, arp->arp_spa, spa, sizeof(spa));
+
+                // target
+                char tpa[INET_ADDRSTRLEN];
+                inet_ntop(AF_INET, arp->arp_tpa, tpa, sizeof(tpa));
+
+                switch (op)
+                {
+                    case ARPOP_REQUEST:
+                    {
+                        log->info("ARP request: who has {} tell {}\n sender MAC: {}", tpa, spa,
+                                  parse_mac(arp->arp_sha));
+                        break;
+                    }
+                    case ARPOP_REPLY:
+                    {
+                        log->info("ARP reply: {} is at {}", spa, parse_mac(arp->arp_sha));
+                        break;
+                    }
+                    default:
+                    {
+                        log->info("ARP reply: unknown opcode: {}", op);
+                    }
+                }
+                break;
+            }
+            default:
+                log->info("Unknown ethernet type: {}", ethertype);
         }
     }
     static std::error_code sniff(const SocketCtl &socket_ctl, const size_t packet_count)
@@ -109,101 +174,17 @@ class Sniffer
             return std::error_code{ std::make_error_code(std::errc::bad_address)};
         }
 #define BATCH_SIZE 32
-        // pre-allocate everything — no malloc in the hot path
-        struct sockaddr_in name_buf[BATCH_SIZE];
-        uint8_t      bufs[BATCH_SIZE][2048];
-        char         cmsg_bufs[BATCH_SIZE][256];
-        struct iovec iovecs[BATCH_SIZE];
-        struct mmsghdr msgvec[BATCH_SIZE];
+        net::RecvBuffer<BATCH_SIZE> recv_buffers;
 
-        // one-time setup
-        for (int i = 0; i < BATCH_SIZE; i++) {
-            iovecs[i].iov_base = bufs[i];
-            iovecs[i].iov_len  = sizeof(bufs[i]);
-
-            memset(&msgvec[i], 0, sizeof(msgvec[i]));
-            msgvec[i].msg_hdr.msg_name = &name_buf[i]; // sockaddr_in
-            msgvec[i].msg_hdr.msg_namelen = sizeof(name_buf[i]);
-            msgvec[i].msg_hdr.msg_iov        = &iovecs[i]; //buffer_array (raw frame)
-            msgvec[i].msg_hdr.msg_iovlen     = 1; //number of iov entries
-            msgvec[i].msg_hdr.msg_control    = cmsg_bufs[i]; //cmsghdr (timstamp, TTL)
-            msgvec[i].msg_hdr.msg_controllen = sizeof(cmsg_bufs[i]);
-        }
-
-        int received = recvmmsg(fd, msgvec, packet_count, 0, NULL);
+        int received = recvmmsg(fd, recv_buffers.get_mmsghdr(), packet_count, 0, NULL);
             if (received < 0) { return std::error_code{errno, std::generic_category()};}
         log->debug("received {}", received);
         for (int i = 0; i < received; ++i)
         {
-            // metadata
-            frame::control_massage_header::parse(&msgvec[i].msg_hdr);
-            // header
-            const struct ethhdr *eth = reinterpret_cast<struct ethhdr*>(bufs[i]);
-            log->info("Header: \ndst: {}, src: {}", parse_mac(eth->h_source), parse_mac(eth->h_source));
-
-            switch (uint16_t ethertype = ntohs(eth->h_proto))
-            {
-                case ETH_P_8021Q:
-                {
-                    const struct vlan_hdr *vlan = reinterpret_cast<struct vlan_hdr *>(bufs[i] + sizeof(struct ethhdr));
-                    log->info(parse_vlan(vlan));
-                    break;
-                }
-                case ETH_P_IP:
-                {
-                    const struct iphdr *ip4_hdr = reinterpret_cast<struct iphdr *>(bufs[i] + sizeof(struct ethhdr));
-                    log->info(frame::ipv4_parser::log_frame(ip4_hdr));
-                    break;
-                }
-                case (ETH_P_IPV6):
-                {
-                    const struct ipv6hdr *ip6_hdr = reinterpret_cast<struct ipv6hdr *>(bufs[i] + sizeof(struct ethhdr));
-                    char src_str[INET_ADDRSTRLEN];
-                    char dst_str[INET_ADDRSTRLEN];
-
-                    inet_ntop(AF_INET, &ip6_hdr->saddr, src_str, sizeof(src_str));
-                    inet_ntop(AF_INET, &ip6_hdr->daddr, dst_str, sizeof(dst_str));
-                    log->info("ipv6 src: {}, dst: {}", src_str, dst_str);
-                    break;
-                }
-                case ETH_P_ARP:
-                {
-                    const static ether_arp * arp = reinterpret_cast<ether_arp *>(bufs[i] + sizeof(struct ethhdr));
-                    uint16_t op = ntohs(arp->ea_hdr.ar_op);
-
-                    // sender
-                    char spa[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, arp->arp_spa, spa, sizeof(spa));
-
-                    // target
-                    char tpa[INET_ADDRSTRLEN];
-                    inet_ntop(AF_INET, arp->arp_tpa, tpa, sizeof(tpa));
-
-                    switch(op)
-                    {
-                        case ARPOP_REQUEST: {
-                            log->info("ARP request: who has {} tell {}\n sender MAC: {}", tpa, spa, parse_mac(arp->arp_sha) );
-                            break;
-                        }
-                        case ARPOP_REPLY:
-                        {
-                            log->info("ARP reply: {} is at {}", spa, parse_mac(arp->arp_sha));
-                            break;
-                        }
-                        default:
-                        {
-                            log->info("ARP reply: unknown opcode: {}", op);
-                        }
-                    }
-                    break;
-                }
-                default:
-                    log->info("Unknown ethernet type: {}", ethertype);
-            }
+            parse_frame(recv_buffers.get_msghdr(i));
         }
         return {};
     }
-private:
 
 };
 

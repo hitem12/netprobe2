@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     app.add_option("-i,--interface", interface, "Network interface to capture on");
 
 
-    int packet_count = 1;
+    int packet_count = -1;
     app.add_option("-c,--count", packet_count, "Number of packets to capture");
 
     bool verbose = false;
@@ -64,6 +64,16 @@ int main(int argc, char** argv)
         forge_args.ip4_addr = result.value();
     }, "Destination ip adress" )
         ->required();
+    forge_args.target_ipv4 = std::nullopt;
+    forge_app->add_option_function<std::string>("--target-ip4", [&forge_args](const std::string & s)
+   {
+       const auto result =  net::Ipv4::from_string(s);
+       if (!result.has_value())
+       {
+               throw CLI::ValidationError("--target-ip4", result.error().message());
+       }
+       forge_args.target_ipv4 = result.value();
+   }, "Target ip adress" );
     bool dry_run = false;
     forge_app->add_flag("--dry-run", dry_run, "Print frame dont send it");
     sniffer_app->callback([&](){
@@ -76,10 +86,21 @@ int main(int argc, char** argv)
             logger->error("Failed to initialize: {}", status.error().message());
 
         }
+        logger->debug("Socket with fd: {}", socket_ctl->get());
         auto snif = Sniffer();
-        if (const auto status = snif.sniff(*socket_ctl, packet_count); !status)
+        if (packet_count > 0)
         {
-            logger->error("Sniff fail: {}", status.message());
+            if (const auto status = snif.sniff(*socket_ctl, packet_count); status)
+            {
+                logger->error("Sniff fail: {}", status.message());
+            }
+        } else
+        {
+            if (const auto status = snif.poll(*socket_ctl); !status)
+            {
+                logger->error("Sniff fail: {}", status.message());
+
+            }
         }
         socket_ctl->close_socket();
     });
@@ -106,19 +127,19 @@ int main(int argc, char** argv)
         logger->debug(s_forge.value().to_string());
         if (const auto error = socket_ctl->send(s_forge.value()))
         {
-            auto er = error.value();
+            const auto er = error.value();
             std::string message;
             switch (er.value())
             {
-                case EPERM:     // brak CAP_NET_RAW
+                case EPERM:
                     message = "Missing CAP_NET_RAW";
                     break;
-                case EMSGSIZE:  // ramka > MTU — walidacja z 1.2 powinna to złapać WCZEŚNIEJ
+                case EMSGSIZE:
                     message = "Frame bigger then MTU";
                     break;
                 case ENETDOWN:  // interfejs down
                     message = "Interface down";
-                case ENXIO:     // zły ifindex
+                case ENXIO:
                     message = "bad ifindex";
                 case ENOBUFS:
                     message = "ENOBUFS";
