@@ -44,7 +44,7 @@ struct ArpHeader
             buf.bytes(tha);
             buf.bytes(tpa);
         }
-        void deseriaze(PacketBuffer& buf)
+        void deseriaze(PacketBuffer& buf);
 
 };
 

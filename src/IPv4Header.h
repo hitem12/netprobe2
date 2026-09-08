@@ -4,8 +4,10 @@
 #pragma once
 #include <cstdint>
 #include <inplace_vector>
+#include <fmt/format.h>
 #include "PacketBuffer.h"
 #include "PacketReader.h"
+#include "Ipv4.h"
 namespace net
 {
 #pragma pack(push, 1)
@@ -39,5 +41,42 @@ struct IPv4Header
     std::error_code deserialize(PacketReader& buf);
 };
 #pragma pack(pop)
-
 }  // namespace net
+
+
+template<>
+struct fmt::formatter<net::flagsFragment> : fmt::formatter<std::string_view>
+{
+    auto format(const net::flagsFragment& ff, fmt::format_context& ctx) const
+    {
+        return fmt::format_to(ctx.out(), "fragment offset:{},mf:{},df:{},res:{}",
+            ff.fragmentOffset,
+            ff.mf,
+            ff.df,
+            ff.res);
+    }
+};
+
+template<>
+struct fmt::formatter<net::IPv4Header> : fmt::formatter<std::string_view> {
+    auto format(const net::IPv4Header& iph, fmt::format_context& ctx) const
+    {
+        return fmt::format_to(ctx.out(),
+            "v:{}, hlen:{}, typeOfService:{}, totalLength:{}, packet_id:{}, flags:[{}], ttl: {}, protocol:{}, headerChecksum:{}, sourceIP:{}, destinationIP:{}",
+            iph.version,
+            iph.hlen,
+            iph.typeOfService,
+            iph.totalLength,
+            iph.packetId,
+            iph.flags,
+            iph.ttl,
+            iph.protocol,
+            iph.headerChecksum,
+            net::Ipv4(iph.sourceIP),
+            net::Ipv4(iph.destinationIP));
+    }
+
+};
+
+
+

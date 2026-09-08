@@ -18,6 +18,7 @@
 #include "Parsers.h"
 #include "Epoll.h"
 #include "RecvBuffer.h"
+#include <PacketReader.h>
 using namespace parsers;
 
 using steady_clock = std::chrono::steady_clock;
@@ -113,6 +114,13 @@ class Sniffer
                 const struct iphdr* ip4_hdr =
                     reinterpret_cast<struct iphdr*>(bufs + sizeof(struct ethhdr));
                 log->info(frame::ipv4_parser::log_frame(ip4_hdr));
+                net::PacketReader packet_reader(std::span<uint8_t>(static_cast<uint8_t*>(bufs)+sizeof(struct ethhdr), sizeof(struct iphdr) + sizeof(struct ethhdr)));
+                net::IPv4Header iph;
+                if (const auto err = iph.deserialize(packet_reader); err)
+                {
+                    log->error("Ipv4 Parsing error: {}", err.message());
+                }
+                log->info("FROM PACKET READER: {}", iph);
                 break;
             }
             case (ETH_P_IPV6):
