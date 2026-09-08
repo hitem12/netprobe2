@@ -19,6 +19,7 @@ struct ForgeArgs
     std::array<uint8_t, 6> dst_mac;
     EthernetType eth_type;
     Ipv4 ip4_addr;
+    std::optional<Ipv4> target_ipv4;
 };
 class Forge
 {
@@ -56,8 +57,13 @@ public:
                     };
                     std::ranges::copy(args.dst_mac, arp_header.sha.begin());
                     std::ranges::copy(info.mac, arp_header.tha.begin());
-                    std::ranges::copy(info.ipv4.get_array(), arp_header.spa.begin()+2);
-                    log->debug("self {} asking {}", info.ipv4, args.ip4_addr);
+                    Ipv4 target_ipv4 = info.ipv4;
+                    if (args.target_ipv4.has_value())
+                    {
+                        target_ipv4 = *args.target_ipv4;
+                    }
+                    log->debug("self {} asking {}", target_ipv4, args.ip4_addr);
+                    std::ranges::copy(target_ipv4.get_array(), arp_header.spa.begin()+2);
                     std::ranges::copy(args.ip4_addr.get_array(), arp_header.tpa.begin()+2);
                     arp_header.serialize(buf);
                 }
